@@ -3,32 +3,36 @@ import session from 'express-session';
 import { Strategy as SamlStrategy } from 'passport-saml';
 import { mountApp } from '@moodlenet/http-server/server'
 import { shell } from '../shell.mjs'
-import fs from 'node:fs';
+import { getCoreConfigs } from '@moodlenet/core/ignite';
+import { validateConfigAndGetCert } from './configtools.mjs';
+import { extractAttributesFromSamlProfile, upsertSamlUser } from '../lib.mjs';
 
 shell.call(mountApp)({
   getApp: function getHttpApp(express) {
     const app = express();
 
-    const configPath = `${process.cwd()}/default.config.json`;
-    const configStr = fs.readFileSync(configPath, 'utf8');
-    const configFull = JSON.parse(configStr);
-    const { entryPoint, issuer, sessionSecret } = configFull.pkgs['@citricity/saml-auth'];
-    const certPath = `${process.cwd()}/saml.cert`;
-    const certStr = fs.readFileSync(certPath, 'utf8');
-    const cert = certStr.replace('-----BEGIN CERTIFICATE-----', '')
-      .replace('-----END CERTIFICATE-----', '')
-      .replace(/\n/g, '')
-      .trim();
+    const {config, cert} = validateConfigAndGetCert();
+    const {entryPoint, issuer, sessionSecret} = config;
+
+    const coreConfigs = getCoreConfigs();
+    const callbackUrl = `${coreConfigs.instanceDomain}/.pkg/@citricity/saml-auth/callback`;
 
     const samlStrategy = new SamlStrategy({
       entryPoint,
       issuer,
-      callbackUrl: 'http://localhost:8080/.pkg/@citricity/saml-auth/callback',
+      callbackUrl,
       cert,
       // TODO - type done and maybe profile
     }, (profile: any, done: any) => {
-        // Process user profile and extract necessary information
-        console.log('!!!profile', profile);
+        // Process user profile and extract necessary information.        
+        const attributes = extractAttributesFromSamlProfile(config.attributeMap, profile);
+        // TODO - at some point we will want to support a displayName attribute along side firstName, lastName
+        // so that we don't end up concatenating firstName and lastName which could be totally wrong for some
+        // locales.
+        const {uuid, email, firstName, lastName} = attributes;
+
+        upsertSamlUser({uuid, email, displayName: `${firstName} ${lastName}`});
+
         return done(null, profile);
     });
   
@@ -43,15 +47,14 @@ shell.call(mountApp)({
 
 
     passport.serializeUser((user: any, done: any) => {
-      console.log('SERIALIZE USER', user);
+      //shell.log('debug','SERIALIZE USER', user);
       done(null, user);
     });
 
     passport.deserializeUser((obj: any, done: any) => {
-      console.log('DESERIALIZE USER', obj);
+      //shell.log('debug','DESERIALIZE USER', obj);
       done(null, obj);
     });
-
 
     app.get('/login-failed', ({}, res) => {
       res.send('Saml login failed');
@@ -63,19 +66,24 @@ shell.call(mountApp)({
     }));
     
     app.post('/callback', passport.authenticate('saml', {
-        failureRedirect: '/login',
-        failureFlash: true
+      failureRedirect: '/login',
+      failureFlash: true
     }), ({}, res) => {
         res.redirect('/');
     });
     
     app.get('/logout', (req, res) => {
-        req.logout({}, () => res.redirect('/'));
+      req.logout({}, () => res.redirect('/'));
     });
     
-    app.post('/success', (req, res) => {
-        console.log('!!!req.user', req.user);
-        res.send('SUCCESS!');
+    app.post('/', (req, res) => {
+      shell.log('debug','!!!req.user', req.user);
+      if (req.user) {
+        // User has logged in successfully!
+        // NOW WE NEED TO GET THE JWT TO THE FRONT END!
+      }
+      
+      res.send('SUCCESS!');
     });
     return app;
   },
