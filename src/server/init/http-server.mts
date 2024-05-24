@@ -61,29 +61,28 @@ shell.call(mountApp)({
     });
 
     app.get('/login', passport.authenticate('saml', {
-      successRedirect: '/',
+      successRedirect: '/success',
       failureRedirect: '/login'
     }));
     
     app.post('/callback', passport.authenticate('saml', {
       failureRedirect: '/login',
       failureFlash: true
-    }), ({}, res) => {
-        res.redirect('/');
+    }), (req, res) => {
+        res.send(`WHAT DO WE DO NOW? ${JSON.stringify(req.user)}`);
     });
     
     app.get('/logout', (req, res) => {
       req.logout({}, () => res.redirect('/'));
     });
     
-    app.post('/', (req, res) => {
+    app.post('/success', (req, res) => {
       shell.log('debug','!!!req.user', req.user);
       if (req.user) {
-        // User has logged in successfully!
-        // NOW WE NEED TO GET THE JWT TO THE FRONT END!
+        res.send(JSON.stringify(req.user));
       }
       
-      res.send('SUCCESS!');
+      res.send('Login failed!');
     });
     return app;
   },

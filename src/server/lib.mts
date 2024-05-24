@@ -37,6 +37,7 @@ export async function upsertSamlUser({
 }) {
   const existing = await store.getByUuid(uuid)
   if (existing) {
+    // TODO - update web user and saml user.
     // Found an existing user!
     return {
       success: true,
@@ -109,8 +110,6 @@ export function extractAttributesFromSamlProfile(
   attributeMap: LocalSamlConfig['attributeMap'],
   profile: any,
 ) {
-  console.warn('!!!attributeMap', attributeMap);
-  console.warn('!!!profile', profile);
   const result: any = {}
   for (const [key, path] of Object.entries(attributeMap)) {
     result[key] = getAttributeValueFromPath(profile, path as string)
