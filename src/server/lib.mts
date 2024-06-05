@@ -1,14 +1,15 @@
 import {
-  createWebUser,
+  createWebUser, getProfileRecord, getWebUser,
   sendWebUserTokenCookie,
   signWebUserJwtToken,
-  verifyCurrentTokenCtx,
+  verifyCurrentTokenCtx, WebUserRecord,
 } from '@moodlenet/web-user/server'
 import assert from 'assert'
 import { SamlUserCollection } from './init/arangodb.mjs'
 import { shell } from './shell.mjs'
 import * as store from './store.mjs'
 import { type LocalSamlConfig } from './types.mjs'
+import { SamlUser } from './store/types.mjs'
 
 export async function login({ uuid }: { uuid: string }) {
   const user = await store.getByUuid(uuid)
@@ -20,6 +21,14 @@ export async function login({ uuid }: { uuid: string }) {
   assert(jwtToken, `Couldn't sign token for webUserKey:${user.webUserKey}`)
   shell.call(sendWebUserTokenCookie)(jwtToken)
   return { success: true } as const
+}
+
+type UpsertSamlUser = {
+  success: boolean,
+  webUser: WebUserRecord,
+  samlUser: SamlUser,
+  profile: any,
+  sendHttpJwtToken: () => void
 }
 
 export async function upsertSamlUser({
@@ -34,14 +43,25 @@ export async function upsertSamlUser({
   email: string
   publisher?: boolean
   isAdmin?: boolean
-}) {
-  const existing = await store.getByUuid(uuid)
-  if (existing) {
-    // TODO - update web user and saml user.
+}): Promise<UpsertSamlUser> {
+  const samlUser = await store.getByUuid(uuid)
+
+  if (samlUser) {
+    // TODO - update saml user.
     // Found an existing user!
+    const webUser = await getWebUser({ _key: samlUser.webUserKey })
+    if (!webUser) {
+      throw new Error(`Could not find web user with key ${samlUser.webUserKey}`)
+    }
+    const jwtToken = await shell.call(signWebUserJwtToken)({ webUserkey: samlUser.webUserKey })
+    assert(jwtToken, `Couldn't sign token for webUserKey:${samlUser.webUserKey}`)
+    // Getting the profileRecord doesn't seem to work even though I can see it in the DB and it has the correct key.
+    const profileRecord = await getProfileRecord(webUser.profileKey)
     return {
       success: true,
-      samlUser: existing,
+      webUser: (webUser as WebUserRecord),
+      samlUser: samlUser,
+      profile: profileRecord,
       sendHttpJwtToken() {
         shell.call(sendWebUserTokenCookie)(jwtToken)
       },
@@ -56,12 +76,12 @@ export async function upsertSamlUser({
   })
 
   if (!createNewWebUserResp) {
-    return { success: false, msg: 'could not create new WebUser' } as const
+    throw new Error('Failed to create new web user');
   }
 
   const { jwtToken, newWebUser, newProfile } = createNewWebUserResp
 
-  const samlUser = await store.create({
+  const newSamlUser = await store.create({
     uuid,
     email,
     webUserKey: newWebUser._key,
@@ -69,13 +89,13 @@ export async function upsertSamlUser({
 
   return {
     success: true,
-    samlUser,
-    newWebUser,
-    newProfile,
+    webUser: newWebUser,
+    samlUser: newSamlUser,
+    profile: newProfile,
     sendHttpJwtToken() {
       shell.call(sendWebUserTokenCookie)(jwtToken)
     },
-  } as const
+  }
 }
 
 export async function webUserDeleted({ webUserKey }: { webUserKey: string }) {
