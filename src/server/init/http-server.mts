@@ -1,6 +1,6 @@
 import passport from 'passport';
 import session from 'express-session';
-import { Strategy as SamlStrategy } from 'passport-saml';
+import { Strategy as SamlStrategy, type SamlConfig } from 'passport-saml';
 import { mountApp } from '@moodlenet/http-server/server'
 import { shell } from '../shell.mjs'
 import { getCoreConfigs } from '@moodlenet/core/ignite';
@@ -21,13 +21,23 @@ shell.call(mountApp)({
     const coreConfigs = getCoreConfigs();
     const callbackUrl = `${coreConfigs.instanceDomain}/.pkg/@citricity/saml-auth/callback`;
 
-    const samlStrategy = new SamlStrategy({
+    // Setup mandatory saml config options.
+    const samlConfig: SamlConfig = {
       entryPoint,
       issuer,
       callbackUrl,
-      cert,
-      // TODO - type done and maybe profile
-    }, (profile: any, done: any) => {
+      cert
+    };
+
+    // Add optional saml config options if available.
+    if (config.privateKey) {
+      samlConfig.privateKey = config.privateKey;
+    }
+    if (config.decryptionPvk) {
+      samlConfig.decryptionPvk = config.decryptionPvk;
+    }
+
+    const samlStrategy = new SamlStrategy(samlConfig, (profile: any, done: any) => {
       return done(null, profile);
     });
 
