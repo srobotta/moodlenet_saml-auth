@@ -34,7 +34,6 @@ shell.call(mountApp)({
     if (config.decryptionPvk) {
       samlConfig.decryptionPvk = key
     }
-    samlConfig.wantAssertionsSigned = false
 
     const samlStrategy = new SamlStrategy(samlConfig, (profile: any, done: any) => {
       return done(null, profile)
