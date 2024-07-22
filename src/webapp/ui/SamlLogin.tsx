@@ -1,3 +1,3 @@
 export const SamlLogin = () => {
-  return <div>SAML LOGIN</div>;
+  return <div>SAML LOGIN</div>
 }

@@ -3,7 +3,7 @@ import { LoginPlugins } from '@moodlenet/web-user/webapp'
 import { useMemo } from 'react'
 import { routes } from '../routes.js'
 import '../shell.mjs'
-import { LoginMethodPanelSaml, LoginButton } from '../ui/LoginMethodPanelSaml.js'
+import { LoginButton, LoginMethodPanelSaml } from '../ui/LoginMethodPanelSaml.js'
 
 registerAppRoutes({ routes })
 

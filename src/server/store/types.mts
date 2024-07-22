@@ -2,7 +2,6 @@ import type { DocumentMetadata } from '@moodlenet/arangodb/server'
 
 export type Email = string
 
-
 export type SamlUserData = {
   email: Email
   uuid: string

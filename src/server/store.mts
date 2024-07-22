@@ -55,9 +55,7 @@ export async function delUser(sel: DocumentSelector) {
   return _user(oldUserDoc)
 }
 
-export async function create(
-  _newUserData: Omit<SamlUserData, 'created'>,
-): Promise<SamlUser> {
+export async function create(_newUserData: Omit<SamlUserData, 'created'>): Promise<SamlUser> {
   const newUserData: SamlUserData = {
     ..._newUserData,
     created: shell.now().toISOString(),
@@ -76,7 +74,7 @@ function _user(user: SamlUserDoc | null | undefined): undefined | SamlUser {
         webUserKey: user.webUserKey,
         created: user.created,
         uuid: user.uuid,
-        email: user.email
+        email: user.email,
       }
     : undefined
 }

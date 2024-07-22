@@ -1,15 +1,18 @@
 import {
-  createWebUser, getProfileRecord, getWebUser,
+  createWebUser,
+  getProfileRecord,
+  getWebUser,
   sendWebUserTokenCookie,
   signWebUserJwtToken,
-  verifyCurrentTokenCtx, WebUserRecord,
+  verifyCurrentTokenCtx,
+  type WebUserRecord,
 } from '@moodlenet/web-user/server'
 import assert from 'assert'
 import { SamlUserCollection } from './init/arangodb.mjs'
 import { shell } from './shell.mjs'
 import * as store from './store.mjs'
+import type { SamlUser } from './store/types.mjs'
 import { type LocalSamlConfig } from './types.mjs'
-import { SamlUser } from './store/types.mjs'
 
 export async function login({ uuid }: { uuid: string }) {
   const user = await store.getByUuid(uuid)
@@ -24,10 +27,10 @@ export async function login({ uuid }: { uuid: string }) {
 }
 
 type UpsertSamlUser = {
-  success: boolean,
-  webUser: WebUserRecord,
-  samlUser: SamlUser,
-  profile: any,
+  success: boolean
+  webUser: WebUserRecord
+  samlUser: SamlUser
+  profile: any
   sendHttpJwtToken: () => void
 }
 
@@ -59,7 +62,7 @@ export async function upsertSamlUser({
     const profileRecord = await getProfileRecord(webUser.profileKey)
     return {
       success: true,
-      webUser: (webUser as WebUserRecord),
+      webUser: webUser as WebUserRecord,
       samlUser: samlUser,
       profile: profileRecord,
       sendHttpJwtToken() {
@@ -76,7 +79,7 @@ export async function upsertSamlUser({
   })
 
   if (!createNewWebUserResp) {
-    throw new Error('Failed to create new web user');
+    throw new Error('Failed to create new web user')
   }
 
   const { jwtToken, newWebUser, newProfile } = createNewWebUserResp
@@ -132,7 +135,8 @@ export function extractAttributesFromSamlProfile(
 ) {
   const result: any = {}
   for (const [key, path] of Object.entries(attributeMap)) {
-    result[key] = getAttributeValueFromPath(profile, path as string)
+    result[key] =
+      path in profile ? profile[path] : getAttributeValueFromPath(profile, path as string)
   }
 
   return result as LocalSamlConfig['attributeMap']

@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import { shell } from '../shell.mjs'
-import { LocalSamlConfig } from '../types.mjs'
+import type { LocalSamlConfig } from '../types.mjs'
 
 export const validateConfigAndGetCert = () => {
   const confEntryExample = `
@@ -67,17 +67,24 @@ export const validateConfigAndGetCert = () => {
     }
   }
 
-  const certPath = `${process.cwd()}/saml.cert`
-  if (!fs.existsSync(certPath)) {
-    throw new Error(`A saml.cert file for your IDP needs to be placed in ${certPath}`)
+  const cert: string[] = []
+  fs.readdirSync(process.cwd()).forEach(file => {
+    if (file.substring(file.length - 5, file.length) === '.cert') {
+      const certStr = fs.readFileSync(`${process.cwd()}/${file}`, 'utf8')
+      cert.push(certStr)
+    }
+  })
+
+  if (cert.length === 0) {
+    throw new Error(
+      `Certificates for the IDP must be placed in ${process.cwd()}. No .cert file found.`,
+    )
   }
 
-  const certStr = fs.readFileSync(certPath, 'utf8')
-  const cert = certStr
-    .replace('-----BEGIN CERTIFICATE-----', '')
-    .replace('-----END CERTIFICATE-----', '')
-    .replace(/\n/g, '')
-    .trim()
-
-  return {cert, config} as {cert: string, config: LocalSamlConfig};
+  const keyPath = `${process.cwd()}/saml.pem`
+  if (!fs.existsSync(keyPath)) {
+    throw new Error(`A saml.pem file for your IDP needs to be placed in ${keyPath}`)
+  }
+  const key = fs.readFileSync(keyPath, 'utf8')
+  return { cert, config, key } as { cert: string[]; config: LocalSamlConfig; key: string }
 }
