@@ -1,6 +1,7 @@
 import { PrimaryButton } from '@moodlenet/component-library'
 import { getCurrentLang } from '@moodlenet/core/i18n'
 import type { LocalSamlConfig } from '../../server/types.mjs'
+import type { FC } from 'react'
 import { shell } from '../shell.mjs'
 
 let label = ''
@@ -14,11 +15,11 @@ async function loadConfig() {
 }
 await loadConfig()
 
-export const LoginButton = () => {
+export const LoginButton: FC = () => {
   return <PrimaryButton color="blue">{label}</PrimaryButton>
 }
 
-export const LoginMethodPanelSaml = () => {
+export const LoginMethodPanelSaml: FC = () => {
   return (
     <div>
       <PrimaryButton color="blue">

@@ -20,7 +20,7 @@ export async function login({ uuid }: { uuid: string }) {
     return { success: false } as const
   }
 
-  const jwtToken = await shell.call(signWebUserJwtToken)({ webUserkey: user.webUserKey })
+  const jwtToken = await shell.call(signWebUserJwtToken)({ webUserkey: user.webUserKey, sendTokenCookie: false, })
   assert(jwtToken, `Couldn't sign token for webUserKey:${user.webUserKey}`)
   shell.call(sendWebUserTokenCookie)(jwtToken)
   return { success: true } as const
@@ -56,7 +56,7 @@ export async function upsertSamlUser({
     if (!webUser) {
       throw new Error(`Could not find web user with key ${samlUser.webUserKey}`)
     }
-    const jwtToken = await shell.call(signWebUserJwtToken)({ webUserkey: samlUser.webUserKey })
+    const jwtToken = await shell.call(signWebUserJwtToken)({ webUserkey: samlUser.webUserKey, sendTokenCookie: false, })
     assert(jwtToken, `Couldn't sign token for webUserKey:${samlUser.webUserKey}`)
     // Getting the profileRecord doesn't seem to work even though I can see it in the DB and it has the correct key.
     const profileRecord = await getProfileRecord(webUser.profileKey)
